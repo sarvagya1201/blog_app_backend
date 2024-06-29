@@ -1,7 +1,6 @@
-require('dotenv').config(); // Load environment variables from .env file
-
 const express = require('express');
 const mongoose = require('mongoose');
+const dotenv = require('dotenv');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
@@ -12,13 +11,26 @@ const userRoute = require('./routes/users');
 const postRoute = require('./routes/posts');
 const commentRoute = require('./routes/comments');
 
+// Load environment variables
+dotenv.config();
+
+// Connect to MongoDB
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URL);
+        console.log("Database is connected successfully!");
+    } catch (err) {
+        console.log(err);
+    }
+};
+
 // Initialize Express app
 const app = express();
 
 // Middlewares
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 
 // Static files
 app.use("/images", express.static(path.join(__dirname, "/images")));
@@ -29,29 +41,25 @@ app.use("/api/users", userRoute);
 app.use("/api/posts", postRoute);
 app.use("/api/comments", commentRoute);
 
-// Image upload
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "images");
+
+//image upload
+const storage=multer.diskStorage({
+    destination:(req,file,fn)=>{
+        fn(null,"images")
     },
-    filename: (req, file, cb) => {
-        cb(null, req.body.img); // Use req.body.img or any other filename logic you need
+    filename:(req,file,fn)=>{
+        fn(null,req.body.img)
+        // fn(null,"image1.jpg")
     }
-});
+})
 
-const upload = multer({ storage: storage });
-app.post("/api/upload", upload.single("file"), (req, res) => {
-    res.status(200).json("Image has been uploaded successfully!");
+const upload=multer({storage:storage})
+app.post("/api/upload",upload.single("file"),(req,res)=>{
+    // console.log(req.body)
+    res.status(200).json("Image has been uploaded successfully!")
+})
+// Start server
+app.listen(process.env.PORT, () => {
+    connectDB();
+    console.log("App is running on port " + process.env.PORT);
 });
-
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => {
-        console.log("Database is connected successfully!");
-        // Start server
-        const port = process.env.PORT || 3000;
-        app.listen(port, () => {
-            console.log("App is running on port " + port);
-        });
-    })
-    .catch(err => console.error("MongoDB connection error:", err));
